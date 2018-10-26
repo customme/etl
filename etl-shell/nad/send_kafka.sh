@@ -21,7 +21,7 @@ function main()
         # 创建topic
         $KAFKA_HOME/bin/kafka-topics.sh --create --replication-factor 2 --partitions 3 --topic $prod_id --zookeeper $ZK_LIST
 
-        ls $the_dir/visit.* | while read file_visit; do
+        ls $the_dir/visit.* | grep -v json | while read file_visit; do
             # 转json
             awk -F '\t' '{
                 printf("{\"aid\":\"%s\",\"cuscode\":\"%s\",\"city\":\"%s\",\"ip\":\"%s\",\"create_time\":\"%s\"}\n",$1,$2,$3,$4,$5)
