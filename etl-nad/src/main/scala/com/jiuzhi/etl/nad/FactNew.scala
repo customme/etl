@@ -70,7 +70,7 @@ class FactNew(task: Task) extends TaskExecutor(task) with Serializable {
     } catch {
       case _: MySQLSyntaxErrorException =>
         log.info(s"Table ${factTable}_${task.statDate} already exists")
-        JdbcUtil.executeUpdate(adDb, "DROP TABLE ${factTable}")
+        JdbcUtil.executeUpdate(adDb, s"DROP TABLE ${factTable}")
     }
 
     // 更新
