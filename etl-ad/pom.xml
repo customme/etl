@@ -6,7 +6,7 @@
 		<groupId>com.jiuzhi.etl</groupId>
 		<version>0.0.1</version>
 	</parent>
-	<artifactId>etl-nad</artifactId>
+	<artifactId>etl-ad</artifactId>
 	<name>${project.artifactId}</name>
 
 	<dependencies>
