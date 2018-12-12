@@ -39,7 +39,7 @@ class MidVersion(task: Task) extends TaskExecutor(task) with Serializable {
         .selectExpr("udid", "apppkg", "appVersion", "UNIX_TIMESTAMP(createTime)")
     } else {
       spark.read.option("allowUnquotedFieldNames", true).json(visitLogPath, newVisitLogPath)
-        .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > ''")
+        .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > '' AND LENGTH(appversion) <= 50")
         .selectExpr("udid", "apppkg", "appversion", "UNIX_TIMESTAMP(createtime)")
     }
     if (log.isDebugEnabled) {

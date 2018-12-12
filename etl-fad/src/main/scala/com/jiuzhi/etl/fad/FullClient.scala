@@ -11,7 +11,7 @@ import org.zc.sched.util.DateUtil
 import org.zc.sched.util.DateUtils
 import org.zc.sched.util.JdbcUtil
 
-import com.jiuzhi.etl.fad.model.Client
+import com.jiuzhi.etl.fad.model.Client2
 
 /**
  * 解析访问日志得到full_client
@@ -26,7 +26,7 @@ class FullClient(task: Task) extends TaskExecutor(task) with Serializable {
   // visit log文件目录
   val rootPath = task.taskExt.get("root_path").get
   val topic = task.taskExt.get("topic").get
-  val visitLogPaths = DateUtils.genDate(startDate, endDate).map(rootPath + _ + "/" + topic)
+  val visitLogPaths = DateUtils.genDate(startDate, endDate).map(rootPath + DateUtil.formatDate(_) + "/" + topic)
 
   // 广告数据库
   val adDb = getDbConn(task.taskExt.get("ad_db_id").get.toInt).get
@@ -49,7 +49,7 @@ class FullClient(task: Task) extends TaskExecutor(task) with Serializable {
           "CAST(path AS INT)", "createTime", "updateTime", "CAST(DATE_FORMAT(createTime, 'yyyyMMdd') AS INT)")
     } else {
       spark.read.option("allowUnquotedFieldNames", true).json(visitLogPaths: _*)
-        .where("udid > '' AND apppkg > '' AND clnt > '' AND appversion > ''")
+        .where("udid > '' AND apppkg > '' AND clnt > '' AND appversion > '' AND LENGTH(clnt) <= 50")
         .selectExpr("udid", "apppkg", "clnt", "appversion", "appversion init_version",
           "CAST(path AS INT)", "CAST(createtime AS TIMESTAMP) create_time", "CAST(updatetime AS TIMESTAMP) update_time", "CAST(DATE_FORMAT(createtime, 'yyyyMMdd') AS INT)")
     }
@@ -70,11 +70,11 @@ class FullClient(task: Task) extends TaskExecutor(task) with Serializable {
 
     // 合并
     val result = visitlog.union(client)
-      .map(Client(_)).rdd
+      .map(Client2(_)).rdd
       .groupBy(row => row.udid + row.app_key)
       .map {
         _._2.toSeq.sortBy(_.update_time.getTime)
-          .reduceLeft { (acc, curr) => Client.update(acc, curr) }
+          .reduceLeft { (acc, curr) => Client2.update(acc, curr) }
       }
       .toDF()
       .coalesce(parallelism)

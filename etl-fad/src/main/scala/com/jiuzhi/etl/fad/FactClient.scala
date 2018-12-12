@@ -38,12 +38,12 @@ class FactClient(task: Task) extends TaskExecutor(task) with Serializable {
       // 初始化从MySQL数据库读
       spark.read.jdbc(adDb.jdbcUrl, "t_device_logs", Array(s"createTime < '${task.theDate}'"), adDb.connProps)
         .selectExpr("udid", "apppkg", "clnt", "appVersion", "appVersion init_version",
-          "CAST(path AS INT)", "createTime", "updateTime", "CAST(DATE_FORMAT(createTime, 'yyyyMMdd') AS INT)")
+          "sdkver", "sdkver init_sdkver", "CAST(path AS INT)", "createTime", "updateTime", "CAST(DATE_FORMAT(createTime, 'yyyyMMdd') AS INT)")
     } else {
       spark.read.option("allowUnquotedFieldNames", true).json(visitLogPath, newVisitLogPath)
-        .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > ''")
+        .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > '' AND LENGTH(udid) <= 64 AND LENGTH(appversion) <= 50 AND LENGTH(clnt) <= 50")
         .selectExpr("udid", "apppkg", "clnt", "appversion", "appversion init_version",
-          "sdkver", "sdkver init_sdkver", "CAST(path AS INT)", "CAST(createtime AS TIMESTAMP) create_time", "CAST(updatetime AS TIMESTAMP) update_time",
+          "SUBSTR(sdkver, 0, 50)", "SUBSTR(sdkver, 0, 50) init_sdkver", "CASE WHEN path IN ('1', '2', '3', '4', '5') THEN CAST(path AS INT) ELSE 0 END", "CAST(createtime AS TIMESTAMP) create_time", "CAST(updatetime AS TIMESTAMP) update_time",
           "CAST(DATE_FORMAT(createtime, 'yyyyMMdd') AS INT)")
     }
     if (log.isDebugEnabled) {
@@ -57,6 +57,7 @@ class FactClient(task: Task) extends TaskExecutor(task) with Serializable {
     if (log.isDebugEnabled) {
       client.printSchema
       client.show(50, false)
+      client.write.option("delimiter", "\t").csv(s"/tmp/${task.theDate}/${task.taskId}/fact_client-1")
     }
 
     import spark.implicits._
@@ -72,6 +73,7 @@ class FactClient(task: Task) extends TaskExecutor(task) with Serializable {
     if (log.isDebugEnabled) {
       result.printSchema
       result.show(50, false)
+      result.write.option("delimiter", "\t").csv(s"/tmp/${task.theDate}/${task.taskId}/fact_client-2")
     }
 
     // 写入临时表

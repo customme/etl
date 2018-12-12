@@ -32,13 +32,13 @@ class OpenData(task: Task) extends TaskExecutor(task) with Serializable {
     val result = if (task.isFirst) {
       spark.read.jdbc(adDb.jdbcUrl, "fact_client", Array("app_key > '' AND clnt > ''"), adDb.connProps)
         .groupBy("create_date", "clnt")
-        .agg(count("*").alias("csum"))
+        .agg(countDistinct("udid").alias("csum"))
         .selectExpr("CONCAT(SUBSTR(create_date, 0, 4), '-', SUBSTR(create_date, 5, 2), '-', SUBSTR(create_date, 7, 2)) AS cdate", "clnt AS chacode", "csum")
         .coalesce(parallelism)
     } else {
       spark.read.jdbc(adDb.jdbcUrl, "fact_client", Array(s"create_date = '${task.statDate}' AND app_key > '' AND clnt > ''"), adDb.connProps)
         .groupBy("clnt")
-        .agg(count("*").alias("csum"))
+        .agg(countDistinct("udid").alias("csum"))
         .selectExpr("clnt AS chacode", "csum")
         .withColumn("cdate", lit(s"${task.prevDate}"))
         .coalesce(parallelism)
