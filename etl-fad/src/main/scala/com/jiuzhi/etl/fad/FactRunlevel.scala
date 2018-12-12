@@ -29,7 +29,7 @@ class FactRunlevel(task: Task) extends TaskExecutor(task) with Serializable {
         .selectExpr("udid", "apppkg AS app_key", "clnt", "runlevel", "CAST(DATE_FORMAT(createTime, 'yyyyMMdd') AS INT) AS create_date")
     } else {
       spark.read.option("allowUnquotedFieldNames", true).json(visitLogPath, newVisitLogPath)
-        .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > ''")
+        .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > '' AND LENGTH(clnt) <= 50")
         .selectExpr("udid", "apppkg AS app_key", "clnt", "runlevel", "CAST(DATE_FORMAT(createtime, 'yyyyMMdd') AS INT) AS create_date")
     }
     if (log.isDebugEnabled) {

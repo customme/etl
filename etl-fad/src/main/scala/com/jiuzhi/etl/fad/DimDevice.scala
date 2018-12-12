@@ -45,12 +45,13 @@ class DimDevice(task: Task) extends TaskExecutor(task) with Serializable {
           "cityId", "country", "createTime", "updateTime")
     } else {
       spark.read.option("allowUnquotedFieldNames", true).json(visitLogPath, newVisitLogPath)
-        .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > ''")
+        .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > '' AND LENGTH(udid) <= 64 AND LENGTH(clnt) <= 50")
+        .na.fill(Map("gp" -> 2))
         .selectExpr("udid", "deviceid", "imsi", "imei", "vender",
           "model", "osVersion", "platform", "androidid", "operator",
-          "CASE WHEN network = 'GPRS' THEN '1GPRS' WHEN network = 'Wifi' THEN '0WIFI' WHEN network = 'Unknown' THEN '-Unknown' ELSE network END",
-          "src", "mac", "apppkg", "clnt", "CAST(isroot AS INT)",
-          "CAST(gp AS INT)", "gaid", "CAST(rom AS LONG)", "lang", "ua",
+          "CASE WHEN network = 'GPRS' THEN '1GPRS' WHEN network = 'Wifi' THEN '0WIFI' WHEN network = 'Unknown' THEN '-Unknown' WHEN network > '' THEN SUBSTR(network, 0, 8) ELSE '-Unknown' END",
+          "src", "mac", "apppkg", "clnt", "CASE WHEN isroot = '1' THEN 1 ELSE 2 END",
+          "CASE WHEN gp = '1' THEN 1 ELSE 2 END", "gaid", "CAST(rom AS LONG)", "lang", "SUBSTR(ua, 0, 200)",
           "CAST(cityid AS LONG)", "country", "CAST(createtime AS TIMESTAMP) create_time", "CAST(updatetime AS TIMESTAMP) update_time")
     }
     if (log.isDebugEnabled) {
@@ -85,6 +86,7 @@ class DimDevice(task: Task) extends TaskExecutor(task) with Serializable {
     if (log.isDebugEnabled) {
       result.printSchema
       result.show(50, false)
+      result.write.option("delimiter", "\t").csv(s"/tmp/${task.theDate}/${task.taskId}/dim_device")
     }
 
     // 写入临时表

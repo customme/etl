@@ -27,7 +27,7 @@ class FactActive2(task: Task) extends TaskExecutor(task) with Serializable {
     val visitlog = if (task.isFirst) {
       // 初始化从MySQL数据库读
       spark.read.jdbc(adDb.jdbcUrl, "t_device_logs", Array(s"createTime < '${task.theDate}'"), adDb.connProps)
-        .selectExpr("udid", "apppkg", "DATE_FORMAT(createtime, 'yyyy-MM-dd') AS active_date", "appVersion", "CAST(cityId AS LONG)", "country", "createtime")
+        .selectExpr("udid", "apppkg", "DATE_FORMAT(createtime, 'yyyy-MM-dd') AS active_date", "logtype", "appVersion", "CAST(cityId AS LONG)", "country", "createtime")
     } else {
       spark.read.option("allowUnquotedFieldNames", true).json(visitLogPath, newVisitLogPath)
         .where(s"createtime >= '${task.prevDate}' AND createtime < '${task.theDate}' AND udid > ''")

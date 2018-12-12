@@ -11,8 +11,17 @@ case class Client(udid: String, app_key: String, clnt: String, var version: Stri
 object Client {
 
   def apply(row: Row): Client = {
-    Client(row.getString(0), row.getString(1), row.getString(2), row.getString(3), row.getString(4),
-      row.getString(5), row.getString(6), row.getInt(7), row.getTimestamp(8), row.getTimestamp(9),
+    Client(
+      row.getString(0),
+      row.getString(1),
+      row.getString(2),
+      row.getString(3),
+      row.getString(4),
+      row.getString(5),
+      row.getString(6),
+      row.getInt(7),
+      row.getTimestamp(8),
+      row.getTimestamp(9),
       row.getInt(10))
   }
 
