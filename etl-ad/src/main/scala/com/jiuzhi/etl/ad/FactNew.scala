@@ -28,7 +28,7 @@ class FactNew(task: Task) extends TaskExecutor(task) with Serializable {
   val endDate = task.runParams.getOrElse("end_date", startDate)
   // 访问日志目录
   val visitLogDirs = DateUtils.genDate(DateUtil.getDate(startDate), DateUtil.getDate(endDate)).map {
-    hdfsDir + DateUtil.formatDate(_) + "/" + productCode
+    hdfsDir + productCode + "/" + DateUtil.formatDate(_)
   }
 
   // 广告数据库

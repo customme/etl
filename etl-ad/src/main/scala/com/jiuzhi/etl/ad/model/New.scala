@@ -1,6 +1,7 @@
 package com.jiuzhi.etl.ad.model
 
 import java.sql.Timestamp
+
 import org.apache.spark.sql.Row
 
 /**
