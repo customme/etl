@@ -62,21 +62,17 @@ function parse_data()
     sort -t $'\t' -k 1,1 -k 5,5 $file_merge | awk -F '\t' 'BEGIN{
         OFS=FS
     }{
-        if($1 == aid){
-            area=$3
-            ip=$4
-            update_time=$5
-        }else{
+        if($1 != aid){
             if(aid != "") print aid,channel_code,init_area,area,init_ip,ip,create_time,update_time
             aid=$1
             channel_code=$2
             init_area=$3
-            area=$3
             init_ip=$4
-            ip=$4
             create_time=$5
-            update_time=$5
         }
+        area=$3
+        ip=$4
+        update_time=$5
     }END{
         print aid,channel_code,init_area,area,init_ip,ip,create_time,update_time
     }' > $file_result
@@ -90,13 +86,11 @@ function load_data()
 
     local his_day=`date +%Y%m%d -d "$the_day $bak_count day ago"`
 
-    echo "LOCK TABLES $tbl_new WRITE;
-    DROP TABLE IF EXISTS ${tbl_new}_$prev_day;
+    echo "DROP TABLE IF EXISTS ${tbl_new}_$prev_day;
     RENAME TABLE $tbl_new TO ${tbl_new}_$prev_day;
     CREATE TABLE $tbl_new LIKE ${tbl_new}_$prev_day;
     LOAD DATA LOCAL INFILE '$file_result' INTO TABLE $tbl_new (aid, channel_code, init_area, area, init_ip, ip, create_time, update_time);
     DROP TABLE IF EXISTS ${tbl_new}_$his_day;
-    UNLOCK TABLES;
     " | exec_sql
 }
 
