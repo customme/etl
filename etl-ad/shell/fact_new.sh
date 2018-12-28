@@ -25,6 +25,7 @@ source $ETL_HOME/common/db_util.sh
 function get_data()
 {
     # 从hdfs下载访问日志(json格式)
+    file_visit=$data_path/visit.hdfs
     > $file_visit
     range_date ${start_date//-/} ${end_date//-/} | while read the_date; do
         the_date=`date +%F -d "$the_date"`
@@ -41,16 +42,14 @@ function get_data()
         done
     done
 
-    # 从数据库获取设备信息
+    # 从数据库获取新增
+    file_new=$data_path/new.table
     if [[ ! -s $file_new ]]; then
         # 设置数据库
         set_db $ad_db_id
 
-        echo "SELECT aid, channel_code, init_area, area, init_ip, ip, create_time, update_time FROM $tbl_new;" | exec_sql >> $file_new
+        echo "SELECT aid, channel_code, init_area, area, init_ip, ip, create_time, update_time FROM $tbl_new;" | exec_sql > $file_new
     fi
-
-    # 合并数据
-    cat $file_visit $file_new > $file_merge
 }
 
 # 解析数据
@@ -58,8 +57,10 @@ function parse_data()
 {
     export LC_ALL=C
 
-    # 排序
-    sort -t $'\t' -k 1,1 -k 5,5 $file_merge | awk -F '\t' 'BEGIN{
+    # 合并访问日志和新增用户
+    # 按更新时间排序后逐条对比更新
+    file_result=$data_path/new.result
+    cat $file_visit $file_new | sort -t $'\t' -k 1,1 -k 5,5 | awk -F '\t' 'BEGIN{
         OFS=FS
     }{
         if($1 != aid){
@@ -89,7 +90,8 @@ function load_data()
     echo "DROP TABLE IF EXISTS ${tbl_new}_$prev_day;
     RENAME TABLE $tbl_new TO ${tbl_new}_$prev_day;
     CREATE TABLE $tbl_new LIKE ${tbl_new}_$prev_day;
-    LOAD DATA LOCAL INFILE '$file_result' INTO TABLE $tbl_new (aid, channel_code, init_area, area, init_ip, ip, create_time, update_time);
+    LOAD DATA LOCAL INFILE '$file_result' INTO TABLE $tbl_new (aid, channel_code, init_area, area, init_ip, ip, create_time, update_time)
+    SET create_date = DATE_FORMAT(create_time, '%Y%m%d');
     DROP TABLE IF EXISTS ${tbl_new}_$his_day;
     " | exec_sql
 }
@@ -108,15 +110,6 @@ function execute()
 
     # 备份表保留个数
     bak_count=${bak_count:-3}
-
-    # 从hdfs获取并格式化合并后的文件
-    file_visit=$data_path/visit.hdfs
-    # 从数据库获取的新增用户文件
-    file_new=$data_path/new.table
-    # 合并hdfs和数据库后的文件
-    file_merge=$data_path/visit.merge
-    # 解析结果存储文件
-    file_result=$data_path/new.result
 
     # 获取数据
     log_task $LOG_LEVEL_INFO "Get data"
