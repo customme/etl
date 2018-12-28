@@ -30,7 +30,7 @@ class FactActive(task: Task) extends TaskExecutor(task) with Serializable {
   val endDate = task.runParams.getOrElse("end_date", startDate)
   // 访问日志目录
   val visitLogDirs = DateUtils.genDate(DateUtil.getDate(startDate), DateUtil.getDate(endDate)).map {
-    hdfsDir + productCode + "/" + DateUtil.formatDate(_)
+    hdfsDir + "/" + productCode + "/" + DateUtil.formatDate(_)
   }
 
   // 广告数据库
@@ -46,7 +46,7 @@ class FactActive(task: Task) extends TaskExecutor(task) with Serializable {
     val visitlog = spark.read.json(visitLogDirs: _*)
       .selectExpr("aid", "area", "DATE_FORMAT(create_time, 'yyyy-MM-dd') AS active_date", "CAST(create_time AS TIMESTAMP)")
 
-    // 日期范围
+    // 获取访问日志日期范围
     val range = visitlog.selectExpr("DATE_FORMAT(MIN(active_date), 'yyyyMMdd')", "DATE_FORMAT(MAX(active_date), 'yyyyMMdd')").first
     val minDate = range.getString(0)
     val maxDate = range.getString(1)
@@ -61,7 +61,8 @@ class FactActive(task: Task) extends TaskExecutor(task) with Serializable {
 
     import spark.implicits._
 
-    // 合并
+    // 合并访问日志和活跃用户
+    // 按访问时间排序后逐条对比更新
     val active = visitlog.union(activeTable).na.drop(Seq("aid", "create_time"))
       .map(Active(_)).rdd
       .groupBy(row => row.aid + row.active_date)
@@ -85,7 +86,7 @@ class FactActive(task: Task) extends TaskExecutor(task) with Serializable {
     // 删除已经存在的数据
     JdbcUtil.executeUpdate(dbAd, s"DELETE FROM ${tableActive} WHERE active_date >= ${minDate} AND active_date <= ${maxDate}")
 
-    // 入库
+    // 入库活跃用户
     result.write.mode(SaveMode.Append).jdbc(dbAd.jdbcUrl, tableActive, dbAd.connProps)
   }
 

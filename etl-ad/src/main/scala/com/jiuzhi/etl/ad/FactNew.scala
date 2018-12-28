@@ -3,6 +3,8 @@ package com.jiuzhi.etl.ad
 import java.sql.SQLException
 import com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException
 
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.SaveMode
 
 import org.zc.sched.plugins.spark.TaskExecutor
@@ -28,7 +30,7 @@ class FactNew(task: Task) extends TaskExecutor(task) with Serializable {
   val endDate = task.runParams.getOrElse("end_date", startDate)
   // 访问日志目录
   val visitLogDirs = DateUtils.genDate(DateUtil.getDate(startDate), DateUtil.getDate(endDate)).map {
-    hdfsDir + productCode + "/" + DateUtil.formatDate(_)
+    hdfsDir + "/" + productCode + "/" + DateUtil.formatDate(_)
   }
 
   // 广告数据库
@@ -36,6 +38,8 @@ class FactNew(task: Task) extends TaskExecutor(task) with Serializable {
 
   // 新增用户表
   val tableNew = task.taskExt.getOrElse("tbl_new", "fact_new_" + productCode)
+  // 新增用户表前一天备份表
+  val prevTable = tableNew + "_" + task.statDate
 
   // 新增用户表备份保留个数
   val bakCount = task.taskExt.getOrElse("bak_count", 3).toString.toInt
@@ -44,28 +48,30 @@ class FactNew(task: Task) extends TaskExecutor(task) with Serializable {
     // 任务重做
     if (task.redoFlag) {
       JdbcUtil.executeUpdate(dbAd, s"TRUNCATE TABLE ${tableNew}")
-      JdbcUtil.executeUpdate(dbAd, s"CREATE TABLE IF NOT EXISTS ${tableNew}_${task.statDate} LIKE ${tableNew}")
-      JdbcUtil.executeUpdate(dbAd, s"INSERT INTO ${tableNew} SELECT * FROM ${tableNew}_${task.statDate}")
+      JdbcUtil.executeUpdate(dbAd, s"CREATE TABLE IF NOT EXISTS ${prevTable} LIKE ${tableNew}")
+      JdbcUtil.executeUpdate(dbAd, s"INSERT INTO ${tableNew} SELECT * FROM ${prevTable}")
     }
 
     // 读取 hdfs上的访问日志
     val visitlog = spark.read.json(visitLogDirs: _*)
-      .selectExpr("aid", "channel_code", "area init_area", "area", "ip init_ip",
-        "ip", "CAST(create_time AS TIMESTAMP)", "CAST(create_time AS TIMESTAMP) update_time", "CAST(DATE_FORMAT(create_time, 'yyyyMMdd') AS INT) create_date")
+      .selectExpr("aid", "channel_code", "area init_area", "area", "ip init_ip", "ip",
+        "CAST(create_time AS TIMESTAMP)", "CAST(create_time AS TIMESTAMP) update_time")
 
     // 读取新增用户表
     val newTable = spark.read.jdbc(dbAd.jdbcUrl, tableNew, dbAd.connProps)
-      .select("aid", "channel_code", "init_area", "area", "init_ip", "ip", "create_time", "update_time", "create_date")
+      .select("aid", "channel_code", "init_area", "area", "init_ip", "ip", "create_time", "update_time")
 
     import spark.implicits._
 
-    // 合并
+    // 合并访问日志和新增用户
+    // 按更新时间排序后逐条对比更新
     val result = newTable.union(visitlog).na.drop(Seq("aid", "channel_code", "create_time"))
       .map(New(_)).rdd
       .groupBy(_.aid)
       .map { row => (row._1, row._2.toSeq.sortBy(_.update_time.getTime)) }
       .map(_._2.reduceLeft { (acc, curr) => New.update(acc, curr) })
       .toDF()
+      .withColumn("create_date", date_format(col("create_time"), "yyyyMMdd").cast(IntegerType))
       .coalesce(parallelism)
 
     // 写入临时表
@@ -79,16 +85,16 @@ class FactNew(task: Task) extends TaskExecutor(task) with Serializable {
         throw new RuntimeException(e)
     }
 
-    // 备份
-    JdbcUtil.executeUpdate(dbAd, s"DROP TABLE IF EXISTS ${tableNew}_${task.statDate}")
-    JdbcUtil.executeUpdate(dbAd, s"RENAME TABLE ${tableNew} TO ${tableNew}_${task.statDate}")
+    // 备份当前新增用户表
+    JdbcUtil.executeUpdate(dbAd, s"DROP TABLE IF EXISTS ${prevTable}")
+    JdbcUtil.executeUpdate(dbAd, s"RENAME TABLE ${tableNew} TO ${prevTable}")
 
-    // 更新
+    // 重命名临时表得到最新新增用户表
     JdbcUtil.executeUpdate(dbAd, s"RENAME TABLE ${tmpTable} TO ${tableNew}")
 
-    // 删除历史数据
-    val prevDate = DateUtil.formatDate("yyyyMMdd", DateUtil.nextDate(-bakCount, task.theTime))
-    JdbcUtil.executeUpdate(dbAd, s"DROP TABLE IF EXISTS ${tableNew}_${prevDate}")
+    // 删除历史备份表
+    val hisDate = DateUtil.formatDate("yyyyMMdd", DateUtil.nextDate(-bakCount, task.theTime))
+    JdbcUtil.executeUpdate(dbAd, s"DROP TABLE IF EXISTS ${tableNew}_${hisDate}")
   }
 
 }
