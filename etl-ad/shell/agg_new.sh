@@ -10,90 +10,116 @@
 # product_code    产品编码
 # ad_db_id        广告数据库id
 # tbl_new         新增用户表名(默认为fact_new_$product_code)
+# agg_prefix      聚合表前缀(默认为agg_new_$product_code)
 
 
 source $ETL_HOME/common/db_util.sh
 
 
-# 解析聚合规则
-function parse_rule()
+# 创建表
+function create_table()
 {
-    if [[ -n "$agg_rules" ]]; then
-        echo "$agg_rules" | while read rule columns; do
-            
-        done
-    else
-        echo "$agg_columns"
-    fi
-}
-
-# 聚合
-function aggregate()
-{
-    # 设置数据库
-    set_db $ad_db_id
-
-    echo "CREATE TABLE IF NOT EXISTS ${tp_agg_new}l_1 (
+    echo "CREATE TABLE IF NOT EXISTS ${agg_prefix}_1 (
       create_date INT,
       fact_count INT,
       PRIMARY KEY(create_date)
     ) ENGINE=MyISAM;
-    REPLACE INTO ${tp_agg_new}l_01
-    SELECT create_date, COUNT(1)
-    FROM $tbl_fact_new
-    WHERE create_date >= ${start_date//-/} AND create_date <= ${end_date//-/}
-    GROUP BY create_date;
 
-    CREATE TABLE IF NOT EXISTS ${tp_agg_new}l_02 (
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}_2 (
+      channel_code VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY(channel_code)
+    ) ENGINE=MyISAM;
+
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}_3 (
+      area VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY(area)
+    ) ENGINE=MyISAM;
+
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}_4 (
       create_date INT,
       channel_code VARCHAR(50),
       fact_count INT,
       PRIMARY KEY(create_date, channel_code)
     ) ENGINE=MyISAM;
-    REPLACE INTO ${tp_agg_new}l_02
-    SELECT create_date, channel_code, COUNT(1)
-    FROM $tbl_fact_new
-    WHERE create_date >= ${start_date//-/} AND create_date <= ${end_date//-/}
-    GROUP BY create_date, channel_code;
 
-    CREATE TABLE IF NOT EXISTS ${tp_agg_new}l_03 (
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}_5 (
       create_date INT,
       area VARCHAR(50),
       fact_count INT,
       PRIMARY KEY(create_date, area)
     ) ENGINE=MyISAM;
-    REPLACE INTO ${tp_agg_new}l_03
-    SELECT create_date, area, COUNT(1)
-    FROM $tbl_fact_new
-    WHERE create_date >= ${start_date//-/} AND create_date <= ${end_date//-/}
-    GROUP BY create_date, area;
 
-    CREATE TABLE IF NOT EXISTS ${tp_agg_new}l_04 (
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}_6 (
+      channel_code VARCHAR(50),
+      area VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY(channel_code, area)
+    ) ENGINE=MyISAM;
+
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}_7 (
       create_date INT,
       channel_code VARCHAR(50),
       area VARCHAR(50),
       fact_count INT,
       PRIMARY KEY(create_date, channel_code, area)
     ) ENGINE=MyISAM;
-    REPLACE INTO ${tp_agg_new}l_04
-    SELECT create_date, channel_code, area, COUNT(1)
-    FROM $tbl_fact_new
-    WHERE create_date >= ${start_date//-/} AND create_date <= ${end_date//-/}
-    GROUP BY create_date, channel_code, area;
-    "
+    " | exec_sql
+}
+
+# 聚合
+function aggregate()
+{
+    echo "INSERT INTO ${agg_prefix}_1
+    SELECT create_date, COUNT(1) FROM $tbl_new WHERE $src_filter GROUP BY create_date;
+
+    INSERT INTO ${agg_prefix}_2
+    SELECT channel_code, COUNT(1) FROM $tbl_new WHERE $src_filter GROUP BY channel_code;
+
+    INSERT INTO ${agg_prefix}_3
+    SELECT area, COUNT(1) FROM $tbl_new WHERE $src_filter GROUP BY area;
+
+    INSERT INTO ${agg_prefix}_4
+    SELECT create_date, channel_code, COUNT(1) FROM $tbl_new WHERE $src_filter GROUP BY create_date, channel_code;
+
+    INSERT INTO ${agg_prefix}_5
+    SELECT create_date, area, COUNT(1) FROM $tbl_new WHERE $src_filter GROUP BY create_date, area;
+
+    INSERT INTO ${agg_prefix}_6
+    SELECT channel_code, area, COUNT(1) FROM $tbl_new WHERE $src_filter GROUP BY channel_code, area;
+
+    INSERT INTO ${agg_prefix}_7
+    SELECT create_date, channel_code, area, COUNT(1) FROM $tbl_new WHERE $src_filter GROUP BY create_date, channel_code, area;
+    " | exec_sql
 }
 
 function execute()
 {
     # 新增用户表
     tbl_new=${tbl_new:-fact_new_$product_code}
+    # 聚合表前缀
+    agg_prefix=${agg_prefix-agg_new_$product_code}
 
-    # 开始日期
-    start_date=`awk -F '=' '$1 == "start_date" {print $2}' $log_path/run_params`
-    start_date=${start_date:-$prev_day1}
-    # 结束日期
-    end_date=`awk -F '=' '$1 == "end_date" {print $2}' $log_path/run_params`
-    end_date=${end_date:-$start_date}
+    if [[ $is_first ]]; then
+        src_filter="1 = 1"
+    else
+        # 开始日期
+        start_date=`awk -F '=' '$1 == "start_date" {print $2}' $log_path/run_params`
+        start_date=${start_date:-$prev_day}
+        # 结束日期
+        end_date=`awk -F '=' '$1 == "end_date" {print $2}' $log_path/run_params`
+        end_date=${end_date:-$start_date}
+
+        src_filter="create_date >= ${start_date//-/} AND create_date <= ${end_date//-/}"
+    fi
+    info "$src_filter"
+
+    # 设置数据库
+    set_db $ad_db_id
+
+    # 创建表
+    create_table
 
     # 聚合
     aggregate
