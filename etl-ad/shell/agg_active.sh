@@ -10,7 +10,7 @@
 # product_code    产品编码
 # ad_db_id        广告数据库id
 # tbl_active      活跃用户表名(默认为fact_active_$product_code)
-# agg_prefix      聚合表前缀(默认为agg_active_$product_code)
+# agg_prefix      聚合表前缀(默认为agg_active_${product_code}_)
 
 
 source $ETL_HOME/common/db_util.sh
@@ -19,7 +19,7 @@ source $ETL_HOME/common/db_util.sh
 # 创建表
 function create_table()
 {
-    echo "CREATE TABLE IF NOT EXISTS ${agg_prefix}_1 (
+    echo "CREATE TABLE IF NOT EXISTS ${agg_prefix}l_1 (
       active_date INT,
       create_date INT,
       date_diff INT,
@@ -27,7 +27,7 @@ function create_table()
       PRIMARY KEY(active_date, create_date)
     ) ENGINE=MyISAM;
 
-    CREATE TABLE IF NOT EXISTS ${agg_prefix}_2 (
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}l_2 (
       active_date INT,
       create_date INT,
       date_diff INT,
@@ -36,7 +36,7 @@ function create_table()
       PRIMARY KEY(active_date, create_date, channel_code)
     ) ENGINE=MyISAM;
 
-    CREATE TABLE IF NOT EXISTS ${agg_prefix}_3 (
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}l_3 (
       active_date INT,
       create_date INT,
       date_diff INT,
@@ -45,7 +45,7 @@ function create_table()
       PRIMARY KEY(active_date, create_date, area)
     ) ENGINE=MyISAM;
 
-    CREATE TABLE IF NOT EXISTS ${agg_prefix}_4 (
+    CREATE TABLE IF NOT EXISTS ${agg_prefix}l_4 (
       active_date INT,
       create_date INT,
       date_diff INT,
@@ -60,20 +60,20 @@ function create_table()
 # 聚合
 function aggregate()
 {
-    echo "DELETE FROM ${agg_prefix}_1 WHERE $src_filter;
-    INSERT INTO ${agg_prefix}_1
+    echo "DELETE FROM ${agg_prefix}l_1 WHERE $src_filter;
+    INSERT INTO ${agg_prefix}l_1
     SELECT active_date, create_date, date_diff, COUNT(1) FROM $tbl_active WHERE $src_filter GROUP BY active_date, create_date;
 
-    DELETE FROM ${agg_prefix}_2 WHERE $src_filter;
-    INSERT INTO ${agg_prefix}_2
+    DELETE FROM ${agg_prefix}l_2 WHERE $src_filter;
+    INSERT INTO ${agg_prefix}l_2
     SELECT active_date, create_date, date_diff, channel_code, COUNT(1) FROM $tbl_active WHERE $src_filter GROUP BY active_date, create_date, channel_code;
 
-    DELETE FROM ${agg_prefix}_3 WHERE $src_filter;
-    INSERT INTO ${agg_prefix}_3
+    DELETE FROM ${agg_prefix}l_3 WHERE $src_filter;
+    INSERT INTO ${agg_prefix}l_3
     SELECT active_date, create_date, date_diff, area, COUNT(1) FROM $tbl_active WHERE $src_filter GROUP BY active_date, create_date, area;
 
-    DELETE FROM ${agg_prefix}_4 WHERE $src_filter;
-    INSERT INTO ${agg_prefix}_4
+    DELETE FROM ${agg_prefix}l_4 WHERE $src_filter;
+    INSERT INTO ${agg_prefix}l_4
     SELECT active_date, create_date, date_diff, channel_code, area, COUNT(1) FROM $tbl_active WHERE $src_filter GROUP BY active_date, create_date, channel_code, area;
     " | exec_sql
 }
@@ -83,7 +83,7 @@ function execute()
     # 活跃用户表
     tbl_active=${tbl_active:-fact_active_$product_code}
     # 聚合表前缀
-    agg_prefix=${agg_prefix-agg_active_$product_code}
+    agg_prefix=${agg_prefix-agg_active_${product_code}_}
 
     if [[ $is_first ]]; then
         src_filter="1 = 1"

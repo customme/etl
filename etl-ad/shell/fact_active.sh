@@ -77,7 +77,7 @@ function parse_data()
     cat $file_visit $file_active | sort -t $'\t' -k 1,1 -k 3,3 | awk -F '\t' 'BEGIN{
         OFS=FS
     }{
-        if($1 == aid){
+        if($1 == aid && active_date==substr($3,1,10)){
             visit_times++
         }else{
             if(aid != "") print aid,area,active_date,visit_times
