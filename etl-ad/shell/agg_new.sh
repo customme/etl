@@ -22,48 +22,42 @@ function create_table()
     echo "CREATE TABLE IF NOT EXISTS ${agg_prefix}l_1 (
       create_date INT,
       fact_count INT,
-      PRIMARY KEY(create_date)
+      PRIMARY KEY (create_date)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_2 (
       channel_code VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(channel_code)
+      PRIMARY KEY (channel_code)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_3 (
       area VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(area)
+      PRIMARY KEY (area)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_4 (
       create_date INT,
       channel_code VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(create_date, channel_code)
+      PRIMARY KEY (create_date, channel_code)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_5 (
       create_date INT,
       area VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(create_date, area)
+      PRIMARY KEY (create_date, area)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_6 (
       channel_code VARCHAR(50),
       area VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(channel_code, area)
+      PRIMARY KEY (channel_code, area)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_7 (
       create_date INT,
       channel_code VARCHAR(50),
       area VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(create_date, channel_code, area)
+      PRIMARY KEY (create_date, channel_code, area)
     ) ENGINE=MyISAM;
     " | exec_sql
 }

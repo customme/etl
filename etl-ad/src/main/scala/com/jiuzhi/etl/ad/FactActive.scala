@@ -14,6 +14,7 @@ import org.zc.sched.util.DateUtils
 
 import com.jiuzhi.etl.ad.model.New
 import com.jiuzhi.etl.ad.model.Active
+import org.zc.sched.constant.DBConstant
 
 /**
  * 解析hdfs上的访问日志(json格式),得到活跃用户并写入mysql表
@@ -35,13 +36,43 @@ class FactActive(task: Task) extends TaskExecutor(task) with Serializable {
 
   // 广告数据库
   val dbAd = getDbConn(task.taskExt.get("ad_db_id").get.toInt).get
-
   // 新增用户表
   val tableNew = task.taskExt.getOrElse("tbl_new", "fact_new_" + productCode)
   // 活跃用户表
   val tableActive = task.taskExt.getOrElse("tbl_active", "fact_active_" + productCode)
 
+  // 创建表模式
+  val createMode = task.taskExt.getOrElse("create_mode", DBConstant.CREATE_MODE_AUTO)
+  // 创建表语句
+  val createSql = task.taskExt.getOrElse("create_sql", s"""
+    CREATE TABLE IF NOT EXISTS ${tableNew} (
+      aid VARCHAR(64),
+      channel_code VARCHAR(32),
+      area VARCHAR(16),
+      active_date INT,
+      create_date INT,
+      date_diff INT,
+      visit_times INT,
+      PRIMARY KEY (aid, active_date),
+      KEY idx_channel_code (channel_code),
+      KEY idx_area (area),
+      KEY idx_active_date (active_date),
+      KEY idx_create_date (create_date),
+      KEY idx_date_diff (date_diff),
+      KEY idx_visit_times (visit_times)
+    ) ENGINE=InnoDB COMMENT='活跃用户'
+    """)
+
   def execute {
+    // 删除表
+    if (createMode.equals(DBConstant.CREATE_MODE_DROP)) {
+      JdbcUtil.executeUpdate(dbAd, s"DROP TABLE IF EXISTS ${tableActive}")
+    }
+    // 创建表
+    if (Seq(DBConstant.CREATE_MODE_AUTO, DBConstant.CREATE_MODE_DROP).contains(createMode)) {
+      JdbcUtil.executeUpdate(dbAd, createSql)
+    }
+
     // 读取 hdfs上的访问日志
     val visitlog = spark.read.json(visitLogDirs: _*)
       .selectExpr("aid", "area", "DATE_FORMAT(create_time, 'yyyy-MM-dd') AS active_date", "CAST(create_time AS TIMESTAMP)")

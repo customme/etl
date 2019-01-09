@@ -21,6 +21,7 @@ import org.zc.sched.util.DateUtils
 
 import com.jiuzhi.etl.recommend.util.HBaseUtil
 import com.jiuzhi.etl.recommend.util.SimiUtil
+import org.zc.sched.constant.TaskConstant
 
 /**
  * 用户兴趣模型计算
@@ -77,7 +78,7 @@ class UserProfile(task: Task) extends TaskExecutor(task) with Serializable {
 
     //  获取用户行为，计算用户跟资讯相关度
     val startDate = DateUtil.formatDate("yyyy-MM-dd", DateUtil.nextDate(-intervalDay, task.theTime))
-    val endDate = if (Task.TASK_CYCLE_HOUR.equalsIgnoreCase(task.taskCycle)) task.theDate else task.prevDate
+    val endDate = if (TaskConstant.TASK_CYCLE_HOUR.equalsIgnoreCase(task.taskCycle)) task.theDate else task.prevDate
     var sql = s"SELECT b.device_id, b.event_name, b.info_id, DATEDIFF('${task.theDate}', b.click_date) date_diff, LEAST(b.click_count, ${maxUserClicks}), a.user_count" +
       s" FROM (SELECT * FROM d_info_click WHERE click_date >= '${startDate}' AND click_date <= '${endDate}') a" +
       s" JOIN (SELECT * FROM d_user_click WHERE click_date >= '${startDate}' AND click_date <= '${endDate}') b" +

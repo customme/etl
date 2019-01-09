@@ -77,7 +77,7 @@ function parse_data()
     cat $file_visit $file_active | sort -t $'\t' -k 1,1 -k 3,3 | awk -F '\t' 'BEGIN{
         OFS=FS
     }{
-        if($1 == aid && active_date==substr($3,1,10)){
+        if($1 == aid && substr($3,1,10) == active_date){
             visit_times++
         }else{
             if(aid != "") print aid,area,active_date,visit_times
@@ -102,11 +102,36 @@ function parse_data()
     join -t "$sep" -o 1.1 2.2 1.2 1.3 2.3 1.4 $file_active1 $file_new > $file_result
 }
 
+# 创建表
+function create_table()
+{
+    echo "CREATE TABLE $tbl_active (
+      aid VARCHAR(64),
+      channel_code VARCHAR(32),
+      area VARCHAR(16),
+      active_date INT,
+      create_date INT,
+      date_diff INT,
+      visit_times INT,
+      PRIMARY KEY (aid, active_date),
+      KEY idx_channel_code (channel_code),
+      KEY idx_area (area),
+      KEY idx_active_date (active_date),
+      KEY idx_create_date (create_date),
+      KEY idx_date_diff (date_diff),
+      KEY idx_visit_times (visit_times)
+    ) ENGINE=InnoDB COMMENT='活跃用户';
+    " | exec_sql
+}
+
 # 导入数据库
 function load_data()
 {
     # 设置数据库
     set_db $ad_db_id
+
+    # 创建表
+    create_table
 
     echo "DELETE FROM $tbl_active WHERE active_date >= $min_date AND active_date <= $max_date;
     ALTER TABLE $tbl_active DISABLE KEYS;

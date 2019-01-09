@@ -6,6 +6,7 @@ import org.apache.spark.sql.SaveMode
 import org.zc.sched.plugins.spark.TaskExecutor
 import org.zc.sched.model.Task
 import org.zc.sched.util.JdbcUtil
+import org.zc.sched.constant.DBConstant
 
 /**
  * 生成新增用户表聚合表
@@ -17,7 +18,6 @@ class AggNew(task: Task) extends TaskExecutor(task) with Serializable {
 
   // 广告数据库
   val dbAd = getDbConn(task.taskExt.get("ad_db_id").get.toInt).get
-
   // 新增用户表
   val tableNew = task.taskExt.getOrElse("tbl_new", "fact_new_" + productCode)
 
@@ -32,6 +32,51 @@ class AggNew(task: Task) extends TaskExecutor(task) with Serializable {
 
   val keyColumn = task.taskExt.getOrElse("key_column", "id")
   val factCount = task.taskExt.getOrElse("fact_count", "fact_count")
+
+  // 创建表模式
+  val createMode = task.taskExt.getOrElse("create_mode", DBConstant.CREATE_MODE_AUTO)
+  // 创建表语句
+  val createSqls = Seq(
+    s"""CREATE TABLE IF NOT EXISTS ${aggPrefix}l_1 (
+      create_date INT,
+      fact_count INT,
+      PRIMARY KEY (create_date)
+    ) ENGINE=MyISAM""",
+    s"""CREATE TABLE IF NOT EXISTS ${aggPrefix}l_2 (
+      channel_code VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY (channel_code)
+    ) ENGINE=MyISAM""",
+    s"""CREATE TABLE IF NOT EXISTS ${aggPrefix}l_3 (
+      area VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY (area)
+    ) ENGINE=MyISAM""",
+    s"""CREATE TABLE IF NOT EXISTS ${aggPrefix}l_4 (
+      create_date INT,
+      channel_code VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY (create_date, channel_code)
+    ) ENGINE=MyISAM""",
+    s"""CREATE TABLE IF NOT EXISTS ${aggPrefix}l_5 (
+      create_date INT,
+      area VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY (create_date, area)
+    ) ENGINE=MyISAM""",
+    s"""CREATE TABLE IF NOT EXISTS ${aggPrefix}l_6 (
+      channel_code VARCHAR(50),
+      area VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY (channel_code, area)
+    ) ENGINE=MyISAM""",
+    s"""CREATE TABLE IF NOT EXISTS ${aggPrefix}l_7 (
+      create_date INT,
+      channel_code VARCHAR(50),
+      area VARCHAR(50),
+      fact_count INT,
+      PRIMARY KEY (create_date, channel_code, area)
+    ) ENGINE=MyISAM""")
 
   def execute {
     // 解析参数得到聚合规则
@@ -75,6 +120,16 @@ class AggNew(task: Task) extends TaskExecutor(task) with Serializable {
       var result = newTable.groupBy(columns(0), columns.drop(1): _*)
         .agg(count(keyColumn).alias(factCount))
       log.info(s"table: ${aggTable}, schema: ${result.schema.simpleString}")
+
+      // 删除表
+      if (createMode.equals(DBConstant.CREATE_MODE_DROP)) {
+        JdbcUtil.executeUpdate(dbAd, s"DROP TABLE IF EXISTS ${aggTable}")
+      }
+      // 创建表
+      if (Seq(DBConstant.CREATE_MODE_AUTO, DBConstant.CREATE_MODE_DROP).contains(createMode)) {
+        val createSql = createSqls.find(_.contains(s"aggTable"))
+        JdbcUtil.executeUpdate(dbAd, createSql.get)
+      }
 
       // 删除已经存在的数据
       val sql = if (task.isFirst) {

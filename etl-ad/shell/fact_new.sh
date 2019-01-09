@@ -79,11 +79,36 @@ function parse_data()
     }' > $file_result
 }
 
+# 创建表
+function create_table()
+{
+    echo "CREATE TABLE IF NOT EXISTS $tbl_new (
+      aid VARCHAR(64),
+      channel_code VARCHAR(32),
+      init_area VARCHAR(16),
+      area VARCHAR(16),
+      init_ip VARCHAR(16),
+      ip VARCHAR(16),
+      create_time DATETIME,
+      update_time DATETIME,
+      create_date INT,
+      PRIMARY KEY (aid),
+      KEY idx_channel_code (channel_code),
+      KEY idx_init_area (init_area),
+      KEY idx_area (area),
+      KEY idx_create_date (create_date)
+    ) ENGINE=InnoDB COMMENT='新增用户';
+    " | exec_sql
+}
+
 # 导入数据库
 function load_data()
 {
     # 设置数据库
     set_db $ad_db_id
+
+    # 创建表
+    create_table
 
     local his_day=`date +%Y%m%d -d "$the_day $bak_count day ago"`
 

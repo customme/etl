@@ -24,27 +24,24 @@ function create_table()
       create_date INT,
       date_diff INT,
       fact_count INT,
-      PRIMARY KEY(active_date, create_date)
+      PRIMARY KEY (active_date, create_date)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_2 (
       active_date INT,
       create_date INT,
       date_diff INT,
       channel_code VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(active_date, create_date, channel_code)
+      PRIMARY KEY (active_date, create_date, channel_code)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_3 (
       active_date INT,
       create_date INT,
       date_diff INT,
       area VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(active_date, create_date, area)
+      PRIMARY KEY (active_date, create_date, area)
     ) ENGINE=MyISAM;
-
     CREATE TABLE IF NOT EXISTS ${agg_prefix}l_4 (
       active_date INT,
       create_date INT,
@@ -52,7 +49,7 @@ function create_table()
       channel_code VARCHAR(50),
       area VARCHAR(50),
       fact_count INT,
-      PRIMARY KEY(active_date, create_date, channel_code, area)
+      PRIMARY KEY (active_date, create_date, channel_code, area)
     ) ENGINE=MyISAM;
     " | exec_sql
 }
