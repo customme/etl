@@ -19,7 +19,7 @@ class AggActive(task: Task) extends TaskExecutor(task) with Serializable {
   // 广告数据库
   val dbAd = getDbConn(task.taskExt.get("ad_db_id").get.toInt).get
   // 活跃用户表
-  val tableActive = task.taskExt.getOrElse("tbl_active", "fact_active_" + productCode)
+  val tableActive = task.taskExt.getOrElse("tbl_active", s"fact_active_${productCode}")
 
   // 聚合规则
   // 格式(每行一条规则): 规则编码 分组字段列表
@@ -30,7 +30,7 @@ class AggActive(task: Task) extends TaskExecutor(task) with Serializable {
   // 必须出现的列
   val mustColumns = task.taskExt.get("must_columns")
   // 聚合表前缀
-  val aggPrefix = task.taskExt.getOrElse("agg_prefix", "agg_active_" + productCode + "_")
+  val aggPrefix = task.taskExt.getOrElse("agg_prefix", s"agg_active_${productCode}_")
 
   val keyColumn = task.taskExt.getOrElse("key_column", "id")
   val factCount = task.taskExt.getOrElse("fact_count", "fact_count")
@@ -124,7 +124,7 @@ class AggActive(task: Task) extends TaskExecutor(task) with Serializable {
       }
       // 创建表
       if (Seq(DBConstant.CREATE_MODE_AUTO, DBConstant.CREATE_MODE_DROP).contains(createMode)) {
-        val createSql = createSqls.find(_.contains(s"aggTable"))
+        val createSql = createSqls.find(_.contains(aggTable))
         JdbcUtil.executeUpdate(dbAd, createSql.get)
       }
 

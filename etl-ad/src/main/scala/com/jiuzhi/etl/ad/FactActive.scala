@@ -31,21 +31,21 @@ class FactActive(task: Task) extends TaskExecutor(task) with Serializable {
   val endDate = task.runParams.getOrElse("end_date", startDate)
   // 访问日志目录
   val visitLogDirs = DateUtils.genDate(DateUtil.getDate(startDate), DateUtil.getDate(endDate)).map {
-    hdfsDir + "/" + productCode + "/" + DateUtil.formatDate(_)
+    s"${hdfsDir}/${productCode}/" + DateUtil.formatDate(_)
   }
 
   // 广告数据库
   val dbAd = getDbConn(task.taskExt.get("ad_db_id").get.toInt).get
   // 新增用户表
-  val tableNew = task.taskExt.getOrElse("tbl_new", "fact_new_" + productCode)
+  val tableNew = task.taskExt.getOrElse("tbl_new", s"fact_new_${productCode}")
   // 活跃用户表
-  val tableActive = task.taskExt.getOrElse("tbl_active", "fact_active_" + productCode)
+  val tableActive = task.taskExt.getOrElse("tbl_active", s"fact_active_${productCode}")
 
   // 创建表模式
   val createMode = task.taskExt.getOrElse("create_mode", DBConstant.CREATE_MODE_AUTO)
   // 创建表语句
   val createSql = task.taskExt.getOrElse("create_sql", s"""
-    CREATE TABLE IF NOT EXISTS ${tableNew} (
+    CREATE TABLE IF NOT EXISTS ${tableActive} (
       aid VARCHAR(64),
       channel_code VARCHAR(32),
       area VARCHAR(16),
@@ -82,7 +82,7 @@ class FactActive(task: Task) extends TaskExecutor(task) with Serializable {
     val minDate = range.getString(0)
     val maxDate = range.getString(1)
     if (log.isDebugEnabled) {
-      log.debug("{ minDate -> " + minDate + ", maxDate -> " + maxDate + " }")
+      log.debug(s"{ minDate -> ${minDate}, maxDate -> ${maxDate} }")
     }
 
     // 读取活跃用户表

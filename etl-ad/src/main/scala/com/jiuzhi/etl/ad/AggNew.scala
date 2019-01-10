@@ -19,7 +19,7 @@ class AggNew(task: Task) extends TaskExecutor(task) with Serializable {
   // 广告数据库
   val dbAd = getDbConn(task.taskExt.get("ad_db_id").get.toInt).get
   // 新增用户表
-  val tableNew = task.taskExt.getOrElse("tbl_new", "fact_new_" + productCode)
+  val tableNew = task.taskExt.getOrElse("tbl_new", s"fact_new_${productCode}")
 
   // 聚合规则
   // 格式(每行一条规则): 规则编码 分组字段列表
@@ -28,7 +28,7 @@ class AggNew(task: Task) extends TaskExecutor(task) with Serializable {
   // 聚合列(没有指定聚合规则时,根据聚合列生成聚合规则)
   val aggColumns = task.taskExt.get("agg_columns")
   // 聚合表前缀
-  val aggPrefix = task.taskExt.getOrElse("agg_prefix", "agg_new_" + productCode + "_")
+  val aggPrefix = task.taskExt.getOrElse("agg_prefix", s"agg_new_${productCode}_")
 
   val keyColumn = task.taskExt.getOrElse("key_column", "id")
   val factCount = task.taskExt.getOrElse("fact_count", "fact_count")
@@ -127,7 +127,7 @@ class AggNew(task: Task) extends TaskExecutor(task) with Serializable {
       }
       // 创建表
       if (Seq(DBConstant.CREATE_MODE_AUTO, DBConstant.CREATE_MODE_DROP).contains(createMode)) {
-        val createSql = createSqls.find(_.contains(s"aggTable"))
+        val createSql = createSqls.find(_.contains(aggTable))
         JdbcUtil.executeUpdate(dbAd, createSql.get)
       }
 

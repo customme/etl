@@ -31,13 +31,13 @@ class FactNew(task: Task) extends TaskExecutor(task) with Serializable {
   val endDate = task.runParams.getOrElse("end_date", startDate)
   // 访问日志目录
   val visitLogDirs = DateUtils.genDate(DateUtil.getDate(startDate), DateUtil.getDate(endDate)).map {
-    hdfsDir + "/" + productCode + "/" + DateUtil.formatDate(_)
+    s"${hdfsDir}/${productCode}/" + DateUtil.formatDate(_)
   }
 
   // 广告数据库
   val dbAd = getDbConn(task.taskExt.get("ad_db_id").get.toInt).get
   // 新增用户表
-  val tableNew = task.taskExt.getOrElse("tbl_new", "fact_new_" + productCode)
+  val tableNew = task.taskExt.getOrElse("tbl_new", s"fact_new_${productCode}")
   // 新增用户表前一天备份表
   val prevTable = tableNew + "_" + task.statDate
   // 新增用户表备份保留个数
