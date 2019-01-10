@@ -120,9 +120,11 @@ function execute()
     set_db $ad_db_id
 
     # 创建表
+    log_task $LOG_LEVEL_INFO "Create table"
     create_table
 
     # 聚合
+    log_task $LOG_LEVEL_INFO "Aggregate"
     aggregate
 }
 execute "$@"

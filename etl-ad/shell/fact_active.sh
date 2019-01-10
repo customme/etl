@@ -57,9 +57,6 @@ function get_data()
     # 从数据库获取活跃用户
     file_active=$data_path/active.table
     if [[ ! -s $file_active ]]; then
-        # 设置数据库
-        set_db $ad_db_id
-
         echo "SELECT aid, area, STR_TO_DATE(active_date,'%Y%m%d') FROM $tbl_active WHERE active_date >= $min_date AND active_date <= $max_date;
         " | exec_sql > $file_active
     fi
@@ -127,12 +124,6 @@ function create_table()
 # 导入数据库
 function load_data()
 {
-    # 设置数据库
-    set_db $ad_db_id
-
-    # 创建表
-    create_table
-
     echo "DELETE FROM $tbl_active WHERE active_date >= $min_date AND active_date <= $max_date;
     ALTER TABLE $tbl_active DISABLE KEYS;
     LOAD DATA LOCAL INFILE '$file_result' INTO TABLE $tbl_active (aid, channel_code, area, active_date, create_date, visit_times)
@@ -154,6 +145,13 @@ function execute()
     tbl_new=${tbl_new:-fact_new_$product_code}
     # 活跃用户表
     tbl_active=${tbl_active:-fact_active_$product_code}
+
+    # 设置数据库
+    set_db $ad_db_id
+
+    # 创建表
+    log_task $LOG_LEVEL_INFO "Create table"
+    create_table
 
     # 获取数据
     log_task $LOG_LEVEL_INFO "Get data"

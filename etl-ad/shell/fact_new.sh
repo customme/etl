@@ -45,9 +45,6 @@ function get_data()
     # 从数据库获取新增
     file_new=$data_path/new.table
     if [[ ! -s $file_new ]]; then
-        # 设置数据库
-        set_db $ad_db_id
-
         echo "SELECT aid, channel_code, init_area, area, init_ip, ip, create_time, update_time FROM $tbl_new;" | exec_sql > $file_new
     fi
 }
@@ -104,12 +101,6 @@ function create_table()
 # 导入数据库
 function load_data()
 {
-    # 设置数据库
-    set_db $ad_db_id
-
-    # 创建表
-    create_table
-
     local his_day=`date +%Y%m%d -d "$the_day $bak_count day ago"`
 
     echo "DROP TABLE IF EXISTS ${tbl_new}_$prev_day;
@@ -135,6 +126,13 @@ function execute()
 
     # 备份表保留个数
     bak_count=${bak_count:-3}
+
+    # 设置数据库
+    set_db $ad_db_id
+
+    # 创建表
+    log_task $LOG_LEVEL_INFO "Create table"
+    create_table
 
     # 获取数据
     log_task $LOG_LEVEL_INFO "Get data"
