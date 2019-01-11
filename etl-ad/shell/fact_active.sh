@@ -102,7 +102,7 @@ function parse_data()
 # 创建表
 function create_table()
 {
-    echo "CREATE TABLE $tbl_active (
+    echo "CREATE TABLE IF NOT EXISTS $tbl_active (
       aid VARCHAR(64),
       channel_code VARCHAR(32),
       area VARCHAR(16),
