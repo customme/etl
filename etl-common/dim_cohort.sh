@@ -40,8 +40,8 @@ function add_data()
         }
     }' > /tmp/dim_cohort.tmp
 
-    echo "INSERT INTO $tbl_cohort (id, day_num, week_num, month_num, quarter_num, year_num) VALUES (-1, '未知', '未知', '未知', '未知', '未知');
-    LOAD DATA LOCAL INFILE 'dim_cohort.tmp' INTO TABLE dim_cohort (id, day_num, week_num, month_num, quarter_num, year_num);
+    echo "INSERT IGNORE INTO $tbl_cohort (id, day_num, week_num, month_num, quarter_num, year_num) VALUES (-1, '未知', '未知', '未知', '未知', '未知');
+    LOAD DATA LOCAL INFILE '/tmp/dim_cohort.tmp' INTO TABLE dim_cohort (id, day_num, week_num, month_num, quarter_num, year_num);
     " | exec_sql
 
     # 删除临时文件
@@ -80,9 +80,11 @@ function execute()
     set_db $db_id
 
     # 创建表
+    log_task $LOG_LEVEL_INFO "Create table"
     create_table
 
     # 添加数据
+    log_task $LOG_LEVEL_INFO "Add data"
     add_data
 }
 execute "$@"

@@ -45,9 +45,11 @@ function execute()
     set_db $db_id
 
     # 创建表
+    log_task $LOG_LEVEL_INFO "Create table"
     create_table
 
     # 添加数据
+    log_task $LOG_LEVEL_INFO "Add data"
     add_data
 }
 execute "$@"

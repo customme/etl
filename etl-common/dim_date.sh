@@ -116,7 +116,7 @@ function add_date()
         cn_week[5]="周六"
         cn_week[6]="周日"
 
-        print "INSERT INTO $tbl_date (id, the_year, half_year, the_quarter, month_of_year, week_of_year, day_of_month, week_day, the_date, order_no, quarter_name, month_name, abbr_month_name, cn_month_name, week_name, abbr_week_name, cn_week_name) VALUES"
+        print "INSERT IGNORE INTO '$tbl_date' (id, the_year, half_year, the_quarter, month_of_year, week_of_year, day_of_month, week_day, the_date, order_no, quarter_name, month_name, abbr_month_name, cn_month_name, week_name, abbr_week_name, cn_week_name) VALUES"
         printf("(%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, \"Q%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");\n",id, year, half_year, quarter,month, week_of_year, day, week_day, id, order_no, quarter, month_name, abbr_month_name, cn_month[month], week_name, abbr_week_name, cn_week[week_day])
     }' | exec_sql
 }
@@ -140,9 +140,11 @@ function execute()
     set_db $db_id
 
     # 创建表
+    log_task $LOG_LEVEL_INFO "Create table"
     create_table
 
     # 添加日期
+    log_task $LOG_LEVEL_INFO "Add date"
     add_date
 }
 execute "$@"
