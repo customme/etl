@@ -21,6 +21,8 @@ function create_table()
       month_num VARCHAR(2),
       quarter_num VARCHAR(2),
       year_num VARCHAR(2),
+      times SMALLINT(6),
+      times_desc VARCHAR(10),
       PRIMARY KEY(id)
     ) ENGINE =MyISAM COMMENT = '群组';
     " | exec_sql
@@ -48,8 +50,7 @@ function add_data()
     rm -f /tmp/dim_cohort.tmp
 
     # 次数区间
-    echo "ALTER TABLE $tbl_cohort ADD COLUMN times SMALLINT(6), ADD COLUMN times_desc VARCHAR(10);
-    UPDATE dim_cohort
+    echo "UPDATE dim_cohort
     SET times = CASE
     WHEN id <= 0 THEN 0
     WHEN id > 0 AND id <= 2 THEN 1
