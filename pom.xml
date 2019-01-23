@@ -12,8 +12,9 @@
 		<module>etl-recommend</module>
 		<module>etl-yaya</module>
 		<module>etl-yyxq</module>
-    <module>etl-nad</module>
-  </modules>
+		<module>etl-nad</module>
+		<module>etl-ad</module>
+	</modules>
 
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
@@ -112,6 +113,11 @@
 			<dependency>
 				<groupId>org.apache.spark</groupId>
 				<artifactId>spark-streaming_${scala.compat.version}</artifactId>
+				<version>${spark.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.spark</groupId>
+				<artifactId>spark-sql-kafka-0-10_${scala.compat.version}</artifactId>
 				<version>${spark.version}</version>
 			</dependency>
 
