@@ -1,17 +1,12 @@
 package com.jiuzhi.etl.ad
 
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.streaming.OutputMode
 
 import org.zc.sched.plugins.spark.TaskExecutor
 import org.zc.sched.model.Task
+import org.apache.spark.sql.streaming.OutputMode
 
-import com.jiuzhi.etl.ad.sink.NewSink
-
-/**
- * 读取kafka消息实时更新新增用户
- */
-class RealtimeNew(task: Task) extends TaskExecutor(task) with Serializable {
+class RealtimeNewStat(task: Task) extends TaskExecutor(task) with Serializable {
 
   // 产品编码
   val productCode = task.taskExt.get("product_code").get
@@ -22,7 +17,7 @@ class RealtimeNew(task: Task) extends TaskExecutor(task) with Serializable {
 
   // kafka配置
   val brokerList = task.taskExt.get("broker_list").get
-  val groupId = task.taskExt.getOrElse("group_id", "spark_streaming")
+  val groupId = task.taskExt.getOrElse("group_id", "realtime_new_stat")
   val topic = task.taskExt.get("topic").getOrElse(productCode)
   val startOffset = task.taskExt.getOrElse("start_offset", "earliest")
 
@@ -43,8 +38,11 @@ class RealtimeNew(task: Task) extends TaskExecutor(task) with Serializable {
         get_json_object($"value", "$.area").as("area"),
         get_json_object($"value", "$.ip").as("ip"),
         get_json_object($"value", "$.create_time").as("create_time"))
+      .withWatermark("create_time", "10 MINUTES")
+      .groupBy(window(col("create_time"), "10 MINUTES", "5 MINUTES"), col("channel_code"))
+      .count
 
-    visitlog.writeStream.foreach(new NewSink(dbAd, tableNew)).outputMode(OutputMode.Append()).start()
+    visitlog.writeStream.format("console").outputMode(OutputMode.Complete).start()
 
     spark.streams.awaitAnyTermination()
   }
