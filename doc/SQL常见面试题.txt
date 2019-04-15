@@ -1,5 +1,13 @@
 SQL常见面试题
-1、用一条SQL语句查询出每门课程都大于80分的学生姓名
+
+学生表(t_student)
+编号	学号	姓名	性别	年龄
+1	2007001	张三	男	28
+2	2007002	李四	女	25
+3	2007003	王五	女	26
+4	2007001	张三	男	28
+
+学生成绩表(t_score)
 姓名	课程	分数
 张三	语文	83
 张三	数学	78
@@ -10,44 +18,15 @@ SQL常见面试题
 王五	语文	79
 王五	数学	99
 王五	英语	80
-SELECT 姓名 FROM table GROUP BY 姓名 HAVING MIN(分数) > 80;
 
-
-2、查询学生成绩表，得到如下结果
-姓名	语文分数	数学分数	英语分数
-张三	83	78	95
-李四	90	81	88
-王五	79	99	80
-SELECT 姓名, MAX(IF(课程 = '语文', 分数, 0)) '语文分数', MAX(IF(课程 = '数学', 分数, 0)) '数学分数', MAX(IF(课程 = '英语', 分数, 0)) '英语分数' FROM table GROUP BY 姓名;
-
-
-3、查询每门课程分数排名前2的学生
-
-
-
-4、删除除了自动编号不同，其他都相同的学生冗余信息
-自动编号	学号	姓名	课程编号	课程名称	分数
-1	2007001	张三	0001	数学	89
-2	2007002	李四	0002	语文	78
-3	2007003	王五	0003	英语	69
-4	2007001	张三	0001	数学	89
-DELETE FROM table WHERE 自动编号 NOT IN (SELECT MIN(自动编号) FROM table GROUP BY 学号,课程编号);
-
-
-5、有四支球队A、B、C、D进行比赛，用一条SQL语句查询所有可能的比赛组合
-SELECT a.队名, b.队名 FROM 球队 a, 球队 b WHERE a.队名 < b.队名;
-
-
-6、用一条SQL语句查询出所有月份的发生额都比101科目相应月份的发生额高的科目(所有科目都有1-12月份的发生额)
+发生额(t_accrual)
 科目代码	发生月份	发生额
 101	2019-01	600
 101	2019-02	900
 101	2019-03	800
 201	2019-01	900
-SELECT a.科目代码 FROM table a, table b WHERE b.科目代码 = '101' AND a.发生月份 = b.发生月份 AND a.发生额 > b.发生额;
 
-
-7、有如下订单表
+订单表(t_order)
 订单ID	用户ID	购买日期	产品ID	金额
 1	1	2019-03-01	1	100
 2	1	2019-03-06	2	90
@@ -58,12 +37,53 @@ SELECT a.科目代码 FROM table a, table b WHERE b.科目代码 = '101' AND a.�
 7	2	2019-03-23	1	130
 8	2	2019-04-03	1	200
 9	2	2019-04-10	3	110
-查询用户每个月每天累计购买的金额
+
+
+1、用一条SQL语句查询出每门课程都大于80分的学生姓名
+SELECT 姓名 FROM t_score GROUP BY 姓名 HAVING MIN(分数) > 80;
+
+
+2、查询学生成绩表，得到如下结果(行转列)
+姓名	语文分数	数学分数	英语分数
+张三	83	78	95
+李四	90	81	88
+王五	79	99	80
+SELECT 姓名,
+  MAX(IF(课程 = '语文', 分数, 0)) '语文分数',
+  MAX(IF(课程 = '数学', 分数, 0)) '数学分数',
+  MAX(IF(课程 = '英语', 分数, 0)) '英语分数' 
+FROM t_score GROUP BY 姓名;
+
+
+3、查询每门课程分数排名前2的学生姓名、课程、分数(分组top N)
+SELECT a.姓名, a.课程, a.分数 
+FROM t_score a INNER JOIN t_score b 
+ON a.课程 = b.课程 AND a.分数 <= b.分数 
+GROUP BY a.姓名, a.课程, a.分数
+HAVING COUNT(*) <= 2
+ORDER BY a.课程, a.分数 DESC;
+
+
+4、删除除了编号不同，其他都相同的学生冗余信息
+DELETE FROM t_student WHERE 编号 NOT IN (SELECT MIN(编号) FROM t_student GROUP BY 学号);
+
+
+5、有四支球队A、B、C、D进行比赛，用一条SQL语句查询所有可能的比赛组合
+SELECT a.队名, b.队名 FROM 球队 a, 球队 b WHERE a.队名 < b.队名;
+
+
+6、用一条SQL语句查询出所有月份的发生额都比101科目相应月份的发生额高的科目(所有科目都有1-12月份的发生额)
+SELECT a.科目代码 
+FROM table a, table b 
+WHERE b.科目代码 = '101' AND a.发生月份 = b.发生月份 AND a.发生额 > b.发生额;
+
+
+7、查询每个用户每个月累计到当天的购买金额(分组累计)
 SELECT
   b.用户ID,
   b.购买日期,
   SUM(a.金额)
-FROM 订单表 a, 订单表 b 
+FROM t_order a, t_order b 
 WHERE a.用户ID = b.用户ID 
 AND a.购买日期 <= b.购买日期 
 AND DATE_FORMAT(a.购买日期, '%Y-%m') = DATE_FORMAT(b.购买日期, '%Y-%m') 
